@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="form-style">
+	<h1 style="font-weight: 800; font-size: 2rem;">Create Account</h1>
+    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">Join us to start translating instantly</p>
+	<form class="site-form" action="." method="post">
+		{% csrf_token %}
+		{{ form }}
+		<input class="btn-primary" type="submit" value="Sign Up" style="width: 100%; margin-top: 1.5rem; padding: 14px;">
+	</form>
+
+    <div style="text-align: center; margin-top: 2rem;">
+        <span style="color: var(--text-secondary);">Already have an account?</span> 
+        <a href="{% url 'login' %}" style="display: inline; color: #ff0080; font-weight: 600; margin-left: 5px;">Log in</a>
+    </div>
+</div>
+<script type="text/javascript">
+	// Clear any weird spans that might be rendered by django forms if needed
+	var spans = document.getElementsByTagName("span");
+    if(spans.length > 2) {
+        // Safe check
+    }
+</script>
+{% endblock %}

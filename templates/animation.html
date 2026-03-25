@@ -1,0 +1,655 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    .live-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        height: 100%;
+    }
+
+    .left-panel, .right-panel {
+        display: flex;
+        flex-direction: column;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+        margin-bottom: 1.2rem;
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* ===== MODE TABS ===== */
+    .mode-tabs {
+        display: flex;
+        gap: 0;
+        margin-bottom: 1.8rem;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .mode-tab {
+        flex: 1;
+        padding: 14px 20px;
+        border: none;
+        background: var(--bg-color);
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .mode-tab:first-child {
+        border-right: 1px solid var(--border-color);
+    }
+
+    .mode-tab.active {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .mode-tab:not(.active):hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* ===== MODE PANELS ===== */
+    .mode-panel {
+        display: none;
+    }
+
+    .mode-panel.active {
+        display: block;
+    }
+
+    /* ===== SPEECH MODE ===== */
+    .live-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        border-radius: 30px;
+        padding: 14px 32px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 0, 128, 0.3);
+    }
+
+    .live-btn:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 20px rgba(121, 40, 202, 0.5);
+    }
+
+    .live-btn.active {
+        background: linear-gradient(135deg, #ff3333, #cc0000);
+        box-shadow: 0 4px 20px rgba(255, 0, 0, 0.4);
+        animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 4px 20px rgba(255, 0, 0, 0.4); }
+        50% { box-shadow: 0 4px 30px rgba(255, 0, 0, 0.7); }
+    }
+
+    .live-toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #555;
+        transition: background 0.3s;
+    }
+
+    .status-dot.listening {
+        background: #00ff88;
+        animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+
+    .transcript-area {
+        background-color: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        min-height: 100px;
+        max-height: 180px;
+        overflow-y: auto;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .transcript-area .final-text { color: var(--text-primary); }
+    .transcript-area .interim-text { color: var(--text-secondary); font-style: italic; }
+    .transcript-placeholder { color: var(--text-secondary); font-style: italic; opacity: 0.6; }
+
+    /* ===== TEXT MODE ===== */
+    .text-input-area {
+        width: 100%;
+        min-height: 120px;
+        padding: 16px;
+        background-color: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-family: 'Inter', sans-serif;
+        resize: vertical;
+        outline: none;
+        transition: border-color 0.3s;
+        margin-bottom: 1rem;
+    }
+
+    .text-input-area:focus {
+        border-color: var(--primary-color);
+    }
+
+    .text-submit-btn {
+        background: var(--primary-gradient);
+        color: white;
+        border: none;
+        border-radius: 30px;
+        padding: 14px 36px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 0, 128, 0.3);
+        margin-bottom: 1.5rem;
+    }
+
+    .text-submit-btn:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 20px rgba(121, 40, 202, 0.5);
+    }
+
+    .text-submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .text-hint {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+        opacity: 0.7;
+    }
+
+    /* ===== SHARED: Section Labels & Chips ===== */
+    .section-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+    }
+
+    .word-queue {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        list-style: none;
+        padding: 0;
+        min-height: 40px;
+    }
+
+    .word-queue li {
+        background-color: var(--chip-bg);
+        color: var(--chip-text);
+        padding: 5px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid var(--accent-purple-border);
+        transition: all 0.3s;
+    }
+
+    .word-queue li.playing {
+        background: var(--primary-gradient);
+        color: white;
+        transform: scale(1.1);
+        border-color: transparent;
+    }
+
+    .word-queue li.played {
+        opacity: 0.4;
+    }
+
+    /* ===== RIGHT PANEL: Video ===== */
+    .animation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .animation-header h2 { margin-bottom: 0; }
+
+    .now-signing {
+        font-size: 0.9rem;
+        color: var(--chip-text);
+        background: var(--chip-bg);
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--accent-purple-border);
+    }
+
+    .video-container {
+        flex: 1;
+        background-color: var(--bg-color);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+    }
+
+    .video-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-secondary);
+    }
+
+    .video-placeholder i { font-size: 3rem; opacity: 0.3; }
+
+    #videoPlayer {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background-color: #000;
+        display: none;
+    }
+
+    #videoPlayer.visible { display: block; }
+</style>
+
+<div class="live-layout">
+    <!-- Left Panel -->
+    <div class="card left-panel">
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="speechTab" onclick="switchMode('speech')">
+                <i class="fa-solid fa-microphone"></i> Live Speech
+            </button>
+            <button class="mode-tab" id="textTab" onclick="switchMode('text')">
+                <i class="fa-solid fa-keyboard"></i> Type Text
+            </button>
+        </div>
+
+        <!-- ===== SPEECH MODE ===== -->
+        <div class="mode-panel active" id="speechPanel">
+            <div class="live-toggle-container">
+                <button class="live-btn" id="liveToggle">
+                    <i class="fa-solid fa-microphone"></i>
+                    <span>Start Live Translation</span>
+                </button>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Idle</span>
+                </div>
+            </div>
+
+            <div class="section-label">LIVE TRANSCRIPT</div>
+            <div class="transcript-area" id="transcriptArea">
+                <span class="transcript-placeholder" id="transcriptPlaceholder">Start live translation and begin speaking...</span>
+            </div>
+        </div>
+
+        <!-- ===== TEXT MODE ===== -->
+        <div class="mode-panel" id="textPanel">
+            <p class="text-hint">Type any English sentence below and click "Convert" to see the sign language translation.</p>
+            <textarea class="text-input-area" id="textInput" placeholder="Example: Hello, how are you today?"></textarea>
+            <button class="text-submit-btn" id="textSubmitBtn" onclick="submitText()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Convert to Sign Language
+            </button>
+        </div>
+
+        <!-- Shared: Word Queue -->
+        <div class="section-label">SIGN WORDS QUEUE</div>
+        <ul class="word-queue" id="wordQueue"></ul>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="card right-panel">
+        <div class="animation-header">
+            <h2><i class="fa-solid fa-video" style="color: var(--primary-color); font-size: 1.1rem; margin-right: 8px;"></i> Sign Language</h2>
+            <span class="now-signing" id="nowSigning" style="display: none;">
+                <i class="fa-solid fa-hand"></i> <span id="currentWord">—</span>
+            </span>
+        </div>
+
+        <div class="video-container">
+            <div class="video-placeholder" id="videoPlaceholder">
+                <i class="fa-solid fa-hands-asl-interpreting"></i>
+                <span>Sign language will appear here</span>
+            </div>
+            <video id="videoPlayer" preload="auto">
+                <source src="" type="video/mp4">
+            </video>
+        </div>
+    </div>
+</div>
+
+<!-- Handle server-side rendered words from manual form submission -->
+{% if words %}
+<script>
+    var serverWords = [{% for word in words %}"{{ word }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+</script>
+{% endif %}
+
+<script>
+    // ===== MODE SWITCHING =====
+    function switchMode(mode) {
+        // Stop speech if switching away
+        if (mode === 'text' && isListening) {
+            stopListening();
+        }
+
+        document.getElementById('speechTab').classList.toggle('active', mode === 'speech');
+        document.getElementById('textTab').classList.toggle('active', mode === 'text');
+        document.getElementById('speechPanel').classList.toggle('active', mode === 'speech');
+        document.getElementById('textPanel').classList.toggle('active', mode === 'text');
+    }
+
+    // ===== STATE =====
+    var recognition = null;
+    var isListening = false;
+    var videoQueue = [];
+    var isPlaying = false;
+    var wordChipIndex = 0;
+
+    // ===== TEXT MODE: Submit =====
+    function submitText() {
+        var text = document.getElementById('textInput').value.trim();
+        if (!text) {
+            alert('Please enter some text first.');
+            return;
+        }
+
+        var btn = document.getElementById('textSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+        // Clear previous queue
+        clearQueue();
+
+        processAndQueueWords(text, function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Convert to Sign Language';
+        });
+    }
+
+    function clearQueue() {
+        videoQueue = [];
+        isPlaying = false;
+        wordChipIndex = 0;
+        document.getElementById('wordQueue').innerHTML = '';
+        document.getElementById('nowSigning').style.display = 'none';
+        document.getElementById('videoPlaceholder').style.display = 'flex';
+        var player = document.getElementById('videoPlayer');
+        player.classList.remove('visible');
+        player.pause();
+    }
+
+    // ===== LIVE SPEECH TOGGLE =====
+    document.getElementById('liveToggle').addEventListener('click', function() {
+        if (isListening) {
+            stopListening();
+        } else {
+            startListening();
+        }
+    });
+
+    function startListening() {
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert('Speech Recognition is not supported in this browser. Please use Google Chrome.');
+            return;
+        }
+
+        // Clear previous results
+        clearQueue();
+        var area = document.getElementById('transcriptArea');
+        area.innerHTML = '';
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = function() {
+            isListening = true;
+            updateSpeechUI(true);
+        };
+
+        recognition.onresult = function(event) {
+            var finalText = '';
+            var interimText = '';
+
+            for (var i = event.resultIndex; i < event.results.length; i++) {
+                var transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalText += transcript;
+                } else {
+                    interimText += transcript;
+                }
+            }
+
+            updateTranscript(finalText, interimText);
+
+            if (finalText.trim()) {
+                processAndQueueWords(finalText.trim());
+            }
+        };
+
+        recognition.onerror = function(event) {
+            console.error('Speech recognition error:', event.error);
+            if (event.error === 'not-allowed') {
+                alert('Microphone permission denied. Please allow access in browser settings.');
+                stopListening();
+            }
+        };
+
+        recognition.onend = function() {
+            if (isListening) {
+                try { recognition.start(); } catch(e) {
+                    setTimeout(function() {
+                        if (isListening) { try { recognition.start(); } catch(e2) {} }
+                    }, 500);
+                }
+            }
+        };
+
+        try { recognition.start(); } catch(e) {
+            alert('Could not start speech recognition. Please try again.');
+        }
+    }
+
+    function stopListening() {
+        isListening = false;
+        if (recognition) {
+            recognition.onend = null;
+            recognition.stop();
+            recognition = null;
+        }
+        updateSpeechUI(false);
+    }
+
+    function updateSpeechUI(listening) {
+        var btn = document.getElementById('liveToggle');
+        var dot = document.getElementById('statusDot');
+        var status = document.getElementById('statusText');
+
+        if (listening) {
+            btn.classList.add('active');
+            btn.innerHTML = '<i class="fa-solid fa-stop"></i> <span>Stop Translation</span>';
+            dot.classList.add('listening');
+            status.textContent = 'Listening...';
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = '<i class="fa-solid fa-microphone"></i> <span>Start Live Translation</span>';
+            dot.classList.remove('listening');
+            status.textContent = 'Idle';
+        }
+    }
+
+    // ===== TRANSCRIPT =====
+    function updateTranscript(finalText, interimText) {
+        var area = document.getElementById('transcriptArea');
+
+        if (finalText) {
+            var span = document.createElement('span');
+            span.className = 'final-text';
+            span.textContent = finalText + ' ';
+            area.appendChild(span);
+        }
+
+        var oldInterim = area.querySelector('.interim-text');
+        if (oldInterim) oldInterim.remove();
+
+        if (interimText) {
+            var iSpan = document.createElement('span');
+            iSpan.className = 'interim-text';
+            iSpan.textContent = interimText;
+            area.appendChild(iSpan);
+        }
+
+        area.scrollTop = area.scrollHeight;
+    }
+
+    // ===== PROCESS TEXT TO SIGN WORDS =====
+    function processAndQueueWords(text, callback) {
+        fetch('/process-text/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.words && data.words.length > 0) {
+                addWordsToQueue(data.words);
+            }
+            if (callback) callback();
+        })
+        .catch(function(err) {
+            console.error('Error processing text:', err);
+            if (callback) callback();
+        });
+    }
+
+    // ===== WORD QUEUE & VIDEO PLAYBACK =====
+    function addWordsToQueue(words) {
+        var queueEl = document.getElementById('wordQueue');
+
+        for (var i = 0; i < words.length; i++) {
+            videoQueue.push(words[i]);
+            var li = document.createElement('li');
+            li.textContent = words[i];
+            li.id = 'chip-' + (wordChipIndex++);
+            queueEl.appendChild(li);
+        }
+
+        if (!isPlaying) {
+            playNext();
+        }
+    }
+
+    function playNext() {
+        if (videoQueue.length === 0) {
+            isPlaying = false;
+            document.getElementById('nowSigning').style.display = 'none';
+            return;
+        }
+
+        isPlaying = true;
+        var word = videoQueue.shift();
+        var videoSrc = '/static/' + word + '.mp4';
+
+        document.getElementById('nowSigning').style.display = 'inline-block';
+        document.getElementById('currentWord').textContent = word;
+
+        // Highlight current chip
+        var chips = document.getElementById('wordQueue').getElementsByTagName('li');
+        for (var i = 0; i < chips.length; i++) {
+            if (chips[i].textContent === word && !chips[i].classList.contains('played') && !chips[i].classList.contains('playing')) {
+                chips[i].classList.add('playing');
+                break;
+            }
+        }
+
+        document.getElementById('videoPlaceholder').style.display = 'none';
+        var player = document.getElementById('videoPlayer');
+        player.classList.add('visible');
+        player.src = videoSrc;
+        player.load();
+
+        var playPromise = player.play();
+        if (playPromise) {
+            playPromise.catch(function(e) {
+                console.log('Autoplay blocked, skipping:', word);
+                onVideoEnd();
+            });
+        }
+    }
+
+    document.getElementById('videoPlayer').addEventListener('ended', onVideoEnd);
+
+    function onVideoEnd() {
+        var chips = document.getElementById('wordQueue').getElementsByTagName('li');
+        for (var i = 0; i < chips.length; i++) {
+            if (chips[i].classList.contains('playing')) {
+                chips[i].classList.remove('playing');
+                chips[i].classList.add('played');
+                break;
+            }
+        }
+        playNext();
+    }
+
+    // ===== HANDLE SERVER-SIDE RENDERED WORDS =====
+    if (typeof serverWords !== 'undefined' && serverWords.length > 0) {
+        addWordsToQueue(serverWords);
+    }
+</script>
+{% endblock %}

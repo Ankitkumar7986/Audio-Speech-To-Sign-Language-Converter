@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="form-style">
+	<h1 style="font-weight: 800; font-size: 2rem;">Welcome Back</h1>
+    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 2rem;">Log in to access your account</p>
+	<form class="site-form" action="." method="post">
+		{% csrf_token %}
+		{{ form }}
+		{% if request.GET.next %}
+			<input type="hidden" name="next" value="{{ request.GET.next }}">
+		{% endif %}
+		<input class="btn-primary" type="submit" value="Log in" style="width: 100%; margin-top: 1.5rem; padding: 14px;">
+	</form>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+        <span style="color: var(--text-secondary);">Don't have an account?</span> 
+        <a href="{% url 'signup' %}" style="display: inline; color: #ff0080; font-weight: 600; margin-left: 5px;">Sign Up</a>
+    </div>
+</div>
+{% endblock %}
